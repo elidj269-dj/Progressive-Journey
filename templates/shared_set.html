@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progressive Set - Progressive Journey</title>
+    <meta property="og:title" content="Progressive House Set - AI Generated">
+    <meta property="og:description" content="Check out this {{ duration }}h Progressive House set generated with AI">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.progressivejourney.net/set/{{ share_id }}">
+    
+    <style>
+        :root {
+            --warm: #00d4ff; --build: #00ff40; --mid: #ffaa00;
+            --peak: #ff0040; --driving: #ccff00; --closing: #9d00ff;
+        }
+        body { 
+            background: linear-gradient(135deg, #010b13 0%, #001a26 100%);
+            color: #fff; 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: auto; }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(0, 26, 38, 0.6);
+            border-radius: 15px;
+            border: 2px solid #00f2ff;
+        }
+        
+        .header h1 {
+            color: #00ff8c;
+            text-shadow: 0 0 20px #00ff8c;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+        }
+        
+        .set-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .info-badge {
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid #00d4ff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        
+        .track-list {
+            background: rgba(0, 26, 38, 0.8);
+            border-radius: 12px;
+            border: 1px solid #003a4d;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+        
+        .track-header {
+            display: grid;
+            grid-template-columns: 50px 1fr 80px 80px 120px;
+            padding: 15px;
+            background: rgba(0, 242, 255, 0.1);
+            font-weight: bold;
+            color: #00ff8c;
+            border-bottom: 2px solid #003a4d;
+        }
+        
+        .track-item {
+            display: grid;
+            grid-template-columns: 50px 1fr 80px 80px 120px;
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 58, 77, 0.5);
+            transition: background 0.3s;
+        }
+        
+        .track-item:hover {
+            background: rgba(0, 255, 140, 0.05);
+        }
+        
+        .track-item:last-child { border-bottom: none; }
+        
+        .col-num { color: #5d7a8c; font-weight: bold; }
+        .col-track { font-weight: bold; color: #fff; }
+        .col-bpm { color: #00d4ff; }
+        .col-key { color: #00ff8c; font-weight: bold; }
+        
+        .energy-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            text-align: center;
+            border: 1px solid;
+            font-weight: bold;
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, rgba(0, 255, 140, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%);
+            border: 2px solid #00ff8c;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .cta-section h2 {
+            color: #00ff8c;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        
+        .cta-section p {
+            color: #00d4ff;
+            font-size: 1.1em;
+            margin-bottom: 25px;
+        }
+        
+        .btn-cta {
+            background: linear-gradient(135deg, #00ff8c 0%, #00d4ff 100%);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-cta:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 255, 140, 0.5);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            color: #5d7a8c;
+            font-size: 0.9em;
+        }
+        
+        .footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎧 Progressive Set</h1>
+            <p style="color: #00d4ff; font-size: 1.1em;">AI-Generated Progressive House Journey</p>
+            
+            <div class="set-info">
+                <div class="info-badge">⏱️ {{ duration }} hora{% if duration > 1 %}s{% endif %}</div>
+                <div class="info-badge">🎵 {{ setlist|length }} tracks</div>
+                <div class="info-badge">👁️ {{ views }} vistas</div>
+            </div>
+        </div>
+        
+        <div class="track-list">
+            <div class="track-header">
+                <div>#</div>
+                <div>Track</div>
+                <div>BPM</div>
+                <div>Key</div>
+                <div>Energy</div>
+            </div>
+            
+            {% for track in setlist %}
+            <div class="track-item">
+                <div class="col-num">{{ loop.index }}</div>
+                <div class="col-track">{{ track.artist }} - {{ track.track }}</div>
+                <div class="col-bpm">{{ track.bpm }}</div>
+                <div class="col-key">{{ track.key }}</div>
+                <div>
+                    <span class="energy-badge" style="
+                        {% if 'warm' in track.stage|lower %}
+                            color: var(--warm); border-color: var(--warm);
+                        {% elif 'build' in track.stage|lower %}
+                            color: var(--build); border-color: var(--build);
+                        {% elif 'mid' in track.stage|lower %}
+                            color: var(--mid); border-color: var(--mid);
+                        {% elif 'peak' in track.stage|lower %}
+                            color: var(--peak); border-color: var(--peak);
+                        {% elif 'driv' in track.stage|lower %}
+                            color: var(--driving); border-color: var(--driving);
+                        {% elif 'clos' in track.stage|lower %}
+                            color: var(--closing); border-color: var(--closing);
+                        {% else %}
+                            color: #fff; border-color: #fff;
+                        {% endif %}
+                    ">{{ track.stage }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="cta-section">
+            <h2>¿Te gustó este set?</h2>
+            <p>Crea tus propios sets progresivos con inteligencia artificial.<br>Armonía perfecta, BPM fluido y transiciones profesionales.</p>
+            <a href="/" class="btn-cta">Generar Mi Set Gratis 🚀</a>
+        </div>
+        
+        <div class="footer">
+            <p>Generado con <a href="/">Progressive Journey</a> - AI Set Generator</p>
+            <p style="margin-top: 10px; font-size: 0.85em;">Compartido el {{ created_at.strftime('%d/%m/%Y') }}</p>
+        </div>
+    </div>
+</body>
+</html>
