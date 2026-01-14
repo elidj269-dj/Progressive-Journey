@@ -1381,10 +1381,23 @@ def reject_payment(request_id):
     
     return jsonify({"success": True, "message": "Solicitud rechazada"}), 200
 
+@app.route("/make_me_owner_secret_route_12345")
+@login_required
+def make_me_owner():
+    """Ruta temporal para hacerte owner"""
+    if current_user.email == "elidj269@gmail.com":  # ← CAMBIÁ ESTO POR TU EMAIL REAL
+        current_user.role = 'owner'
+        current_user.pro_until = datetime.utcnow() + timedelta(days=365)
+        current_user.plan = 'annual'
+        db.session.commit()
+        return "✅ Ahora sos OWNER!"
+    return "❌ No autorizado"
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
