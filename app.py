@@ -34,9 +34,10 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-key-change-in-produ
 print(f"🔍 SECRET_KEY detectada: {app.config['SECRET_KEY'][:20]}..." if app.config['SECRET_KEY'] else "❌ SECRET_KEY NO DETECTADA")
 print(f"🔍 Variables de entorno disponibles: {list(os.environ.keys())[:10]}")
 
-instance_path = os.path.join(basedir, "instance")
-if not os.path.exists(instance_path):
-    os.makedirs(instance_path)
+# DEBUG: Ver qué base de datos se va a usar
+print(f"🔍 DATABASE_URL encontrada: {os.getenv('DATABASE_URL')[:50] if os.getenv('DATABASE_URL') else 'NO ENCONTRADA'}")
+
+# Usar PostgreSQL si DATABASE_URL existe, sino SQLite local
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///instance/users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -1398,6 +1399,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
