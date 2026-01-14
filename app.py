@@ -16,7 +16,8 @@ import requests
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
-load_dotenv()
+if os.path.exists('.env'):
+    load_dotenv()
 
 # ==============================
 # APP
@@ -1381,3 +1382,4 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
