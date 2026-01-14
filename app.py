@@ -28,12 +28,16 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 # ==============================
 # CONFIGURACIÓN
 # ==============================
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-key-change-in-production')
+
+# DEBUG: Ver si la SECRET_KEY se cargó
+print(f"🔍 SECRET_KEY detectada: {app.config['SECRET_KEY'][:20]}..." if app.config['SECRET_KEY'] else "❌ SECRET_KEY NO DETECTADA")
+print(f"🔍 Variables de entorno disponibles: {list(os.environ.keys())[:10]}")
+
 instance_path = os.path.join(basedir, "instance")
 if not os.path.exists(instance_path):
     os.makedirs(instance_path)
-
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(instance_path, "users.db")
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(basedir, "instance", "users.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ==============================
@@ -1382,4 +1386,5 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
