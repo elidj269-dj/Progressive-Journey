@@ -37,7 +37,7 @@ print(f"🔍 Variables de entorno disponibles: {list(os.environ.keys())[:10]}")
 instance_path = os.path.join(basedir, "instance")
 if not os.path.exists(instance_path):
     os.makedirs(instance_path)
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(instance_path, "users.db")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///instance/users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ==============================
@@ -1398,6 +1398,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
