@@ -240,7 +240,24 @@ with app.app_context():
     db.create_all()
     print("✅ Base de datos inicializada correctamente")
     print("📍 Ubicación:", db.engine.url)
-
+    
+    # 👇 AGREGAR ESTO ACÁ
+    owner_email = os.getenv('OWNER_EMAIL', 'elidj269@gmail.com')
+    owner_password = os.getenv('OWNER_PASSWORD', 'password_default')
+    
+    existing_owner = User.query.filter_by(email=owner_email).first()
+    
+    if not existing_owner:
+        owner = User(email=owner_email, role='owner')
+        owner.set_password(owner_password)
+        owner.pro_until = datetime.utcnow() + timedelta(days=3650)
+        owner.plan = 'lifetime'
+        db.session.add(owner)
+        db.session.commit()
+        print(f"✅ Usuario owner {owner_email} creado")
+    else:
+        print(f"✅ Usuario owner ya existe")
+        
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -1399,6 +1416,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
