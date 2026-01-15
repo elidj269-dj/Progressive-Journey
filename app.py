@@ -35,10 +35,17 @@ print(f"🔍 SECRET_KEY detectada: {app.config['SECRET_KEY'][:20]}..." if app.co
 print(f"🔍 Variables de entorno disponibles: {list(os.environ.keys())[:10]}")
 
 # DEBUG: Ver qué base de datos se va a usar
-print(f"🔍 DATABASE_URL encontrada: {os.getenv('DATABASE_URL')[:50] if os.getenv('DATABASE_URL') else 'NO ENCONTRADA'}")
+database_url = os.getenv('DATABASE_URL', 'sqlite:///instance/users.db')
+
+# Fix: PostgreSQL URL debe usar postgresql+psycopg en vez de postgresql
+if database_url and database_url.startswith('postgresql://'):
+    database_url = database_url.replace('postgresql://', 'postgresql+psycopg://')
+    print(f"🔍 DATABASE_URL convertida a: {database_url[:50]}...")
+else:
+    print(f"🔍 DATABASE_URL encontrada: {database_url[:50] if database_url else 'NO ENCONTRADA'}")
 
 # Usar PostgreSQL si DATABASE_URL existe, sino SQLite local
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///instance/users.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ==============================
@@ -1416,6 +1423,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
