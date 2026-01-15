@@ -208,7 +208,7 @@ class User(UserMixin, db.Model):
     last_payment_id = db.Column(db.String(100))
 
     def set_password(self, password):
-    self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -1423,6 +1423,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
