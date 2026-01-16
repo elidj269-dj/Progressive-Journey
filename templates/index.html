@@ -932,6 +932,40 @@
 </div>
 
 <!-- ============================================ -->
+<!-- MODAL DE COMPARTIR SET -->
+<!-- ============================================ -->
+<div id="shareModal" class="share-modal-container" style="display: none;">
+    <div class="share-modal-content">
+        <span class="close-share-btn" onclick="closeShareModal()">&times;</span>
+        
+        <h3>🔗 Compartir Set</h3>
+        <p>Compartí tu set generado con otros DJs y productores</p>
+        
+        <div class="share-buttons-grid">
+            <button class="btn-share-social" onclick="shareToFacebook()">
+                📘 Facebook
+            </button>
+            <button class="btn-share-social" onclick="shareToTwitter()">
+                🐦 Twitter
+            </button>
+            <button class="btn-share-social" onclick="shareToWhatsApp()">
+                💬 WhatsApp
+            </button>
+            <button class="btn-share-social" onclick="shareToInstagram()">
+                📷 Instagram
+            </button>
+            <button class="btn-share-copy" onclick="copyShareLink()">
+                📋 Copiar Link
+            </button>
+        </div>
+        
+        <div class="share-link-display" id="shareLinkDisplay" onclick="copyShareLink()">
+            Generando link...
+        </div>
+    </div>
+</div>
+        
+<!-- ============================================ -->
 <!-- SPOTIFY SEARCH SECTION -->
 <!-- ============================================ -->
 <div class="spotify-toggle">
@@ -1681,4 +1715,5 @@ function renderKeyWheel() {
 }
 </script>
 </body>
+
 </html>
