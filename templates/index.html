@@ -1396,9 +1396,22 @@ async function shareSet() {
         return;
     }
     
+    // Primero obtenemos referencias a los elementos
+    const modal = document.getElementById('shareModal');
+    const linkDisplay = document.getElementById('shareLinkDisplay');
+    
+    // Verificamos que existan
+    if (!modal || !linkDisplay) {
+        console.error('Modal de compartir no encontrado en el DOM');
+        alert('Error: No se pudo abrir el modal de compartir.');
+        return;
+    }
+    
     const hours = document.getElementById('hoursSelect').value;
-    document.getElementById('shareModal').style.display = 'flex';
-    document.getElementById('shareLinkDisplay').textContent = 'Generando link único...';
+    
+    // Ahora sí mostramos el modal
+    modal.style.display = 'flex';
+    linkDisplay.textContent = 'Generando link único...';
     
     try {
         const res = await fetch('/api/share_set', {
@@ -1411,7 +1424,7 @@ async function shareSet() {
         
         const data = await res.json();
         currentShareUrl = data.share_url;
-        document.getElementById('shareLinkDisplay').textContent = currentShareUrl;
+        linkDisplay.textContent = currentShareUrl;
     } catch (e) {
         console.error('Error:', e);
         alert('Hubo un error al generar el link. Intenta de nuevo.');
@@ -1717,3 +1730,4 @@ function renderKeyWheel() {
 </body>
 
 </html>
+
