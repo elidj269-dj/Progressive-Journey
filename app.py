@@ -4,7 +4,7 @@ from flask_login import LoginManager, UserMixin, current_user, login_user, logou
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import json
-import os
+import os 
 import copy
 import mercadopago
 from datetime import datetime, timedelta
@@ -500,7 +500,8 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
         CATTANEO_STATE["last_phase"] = target_energy
 
     # 🔥 PENALIZACIÓN POR KEYS RECIENTES (últimas 5)
-    recent_keys_set = set(recent_keys[-5:]) if len(recent_keys) > 0 else set()
+    # 🎯 PERMITIR RETROCESOS ESTRATÉGICOS (estilo Hernán Cattaneo)
+    recent_keys_window = recent_keys[-3:] if len(recent_keys) >= 3 else recent_keys
     
     scored = []
     
@@ -511,8 +512,13 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
         
         current_key = t["key"]
         
-        if not check_repetition_pattern(current_key, CATTANEO_STATE["last_two_keys"]):
-            continue
+        # ❌ EVITAR LOOPS INMEDIATOS (A6→A7→A6→A7)
+        if len(recent_keys_window) >= 2:
+            if recent_keys_window[-1] == current_key and recent_keys_window[-2] == prev_key:
+                continue  # Bloquea A→B→A→B
+        
+        # ✅ PERMITIR RETROCESOS si no crea loop
+        # Ejemplo válido: 5A→6A→7A→6A (vuelve pero explora)
         
         current_pair = get_key_pair(prev_key, current_key)
         if rel == "switch" and current_pair:
@@ -522,13 +528,14 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
         
         score = random.uniform(20, 40)
 
-        # 🔥 PENALIZACIÓN FUERTE SI LA KEY YA SE USÓ RECIENTEMENTE
-        if current_key in recent_keys_set:
-            score -= 500
+         # 🎯 PENALIZACIÓN MODERADA por keys muy recientes (últimas 2)
+        if len(recent_keys) >= 2 and current_key in recent_keys[-2:]:
+            score -= 150  # Penaliza pero NO bloquea
         
-        # 🔥 PENALIZACIÓN ADICIONAL SI ES LA MISMA KEY QUE LA ANTERIOR
-        if current_key == prev_key:
-            score -= 200
+        # ✅ PERMITIR volver a keys anteriores (ej: 5A→6A→5A→5B)
+        # Solo penaliza levemente si fue hace 1-2 tracks
+        if len(recent_keys) >= 3 and current_key == recent_keys[-3]:
+            score += 50  # BONUS por retroceso estratégico
 
         fifth_penalty = 0
         if rel == "fifth":
@@ -1423,6 +1430,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
