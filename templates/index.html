@@ -1170,13 +1170,20 @@ async function generateSet() {
         }
 
         const data = await res.json();
+
+const previousLocks = [...lockedTracks];
+
+currentSetlist = data;
+
+if (hasLockedTracks) {
+    lockedTracks = data.map(track => track.isLocked === true);
+} else {
+    lockedTracks = new Array(data.length).fill(false);
+}
         
-        currentSetlist = data;
-        lockedTracks = new Array(data.length).fill(false);
-        
-        renderList(data, true, false);
-        document.getElementById('exportTools').style.display = 'flex';
-        renderVisualizations();
+renderList(data, true, false);
+document.getElementById('exportTools').style.display = 'flex';
+renderVisualizations();
     } catch (e) {
         container.innerHTML = '<p style="text-align:center; padding: 20px;">Error al generar.</p>';
     }
@@ -1730,5 +1737,6 @@ function renderKeyWheel() {
 </body>
 
 </html>
+
 
 
