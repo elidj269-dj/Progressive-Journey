@@ -419,6 +419,9 @@ def is_track_valid_for_phase(track, phase, attempt=1):
         bpm = float(track.get("bpm", 0))
         key_val = track.get("key", "")
         energy = int(track.get("energy", 5))
+        role = track.get("role", "")
+        journey_type = track.get("journey_type", "")
+        tension_curve = track.get("tension_curve", "")
     except: 
         return False
     
@@ -431,6 +434,19 @@ def is_track_valid_for_phase(track, phase, attempt=1):
     bpm_ok = (min_bpm - margin) <= bpm <= (max_bpm + margin)
     key_ok = key_val in config["keys"]
     energy_ok = (min_energy - energy_margin) <= energy <= (max_energy + energy_margin)
+
+    # 🧠 FILTRO NARRATIVO POR PHASE
+    narrative_ok = True
+    if phase == "warmup":
+        narrative_ok = journey_type in ["start", ""] and tension_curve in ["flat", "subtle_rise", ""]
+    elif phase == "build":
+        narrative_ok = journey_type in ["transition", ""] and tension_curve in ["rising", "building", ""]
+    elif phase in ["mid_peak", "peak_time"]:
+        narrative_ok = journey_type in ["climax", "transition", ""] and tension_curve in ["peak_drop", "intense", ""]
+    elif phase == "closing":
+        narrative_ok = journey_type in ["resolution", ""] and tension_curve in ["descending", "smooth_exit", ""]
+    
+    return bpm_ok and key_ok and energy_ok and narrative_ok
     
     return bpm_ok and key_ok and energy_ok
 
@@ -511,6 +527,22 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
             continue
         
         current_key = t["key"]
+
+        # 🧠 SCORING NARRATIVO
+        groove_level = t.get("groove_level", 5)
+        tension_curve = t.get("tension_curve", "")
+        journey_type = t.get("journey_type", "")
+        
+        # Bonus por progresión de groove
+        if prev_track:
+            prev_groove = prev_track.get("groove_level", 5)
+            groove_diff = groove_level - prev_groove
+            
+            # Progresión suave de groove (+1 o +2)
+            if 0 <= groove_diff <= 2:
+                score += 100
+            elif groove_diff > 2:
+                score -= 50  # Penaliza saltos bruscos
         
         # ❌ EVITAR LOOPS INMEDIATOS (A6→A7→A6→A7)
         if len(recent_keys_window) >= 2:
@@ -566,6 +598,15 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
                 if CATTANEO_STATE["switch_pair_count"] >= 1:
                     switch_score -= 80
             score += switch_score
+            # 🧠 BONUS POR NARRATIVA CORRECTA
+        if target_energy == "warmup" and journey_type == "start":
+            score += 120
+        elif target_energy == "build" and tension_curve in ["rising", "building"]:
+            score += 150
+        elif target_energy in ["mid_peak", "peak_time"] and journey_type == "climax":
+            score += 180
+        elif target_energy == "closing" and tension_curve in ["descending", "smooth_exit"]:
+            score += 140
         elif rel == "fifth":
             score += fifth_penalty
 
@@ -1430,6 +1471,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
