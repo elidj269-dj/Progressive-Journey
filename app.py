@@ -527,22 +527,6 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
             continue
         
         current_key = t["key"]
-
-        # 🧠 SCORING NARRATIVO
-        groove_level = t.get("groove_level", 5)
-        tension_curve = t.get("tension_curve", "")
-        journey_type = t.get("journey_type", "")
-        
-        # Bonus por progresión de groove
-        if prev_track:
-            prev_groove = prev_track.get("groove_level", 5)
-            groove_diff = groove_level - prev_groove
-            
-            # Progresión suave de groove (+1 o +2)
-            if 0 <= groove_diff <= 2:
-                score += 100
-            elif groove_diff > 2:
-                score -= 50  # Penaliza saltos bruscos
         
         # ❌ EVITAR LOOPS INMEDIATOS (A6→A7→A6→A7)
         if len(recent_keys_window) >= 2:
@@ -559,6 +543,21 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
                     continue
         
         score = random.uniform(20, 40)
+        
+        # 🧠 SCORING NARRATIVO
+        groove_level = t.get("groove_level", 5)
+        tension_curve = t.get("tension_curve", "")
+        journey_type = t.get("journey_type", "")
+        
+        # Bonus por progresión de groove
+        if prev_track:
+            prev_groove = prev_track.get("groove_level", 5)
+            groove_diff = groove_level - prev_groove
+            
+            if 0 <= groove_diff <= 2:
+                score += 100
+            elif groove_diff > 2:
+                score -= 50
 
          # 🎯 PENALIZACIÓN MODERADA por keys muy recientes (últimas 2)
         if len(recent_keys) >= 2 and current_key in recent_keys[-2:]:
@@ -1471,6 +1470,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
