@@ -540,12 +540,16 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
                 recent_keys[-3] == current_key):
                 continue
         
-        # ❌ BLOQUEO 4: Limitar quintas según duración
+        # ❌ BLOQUEO 4: Limitar quintas MUY ESTRICTAMENTE
         if rel == "fifth":
+            # Bloquear si ya usó el máximo permitido
             if CATTANEO_STATE["fifth_count"] >= max_fifths:
                 continue
-            # En warmup/closing, evitar quintas (demasiado agresivo)
+            # Bloquear quintas en warmup y closing (demasiado agresivo)
             if target_energy in ["warmup", "closing"]:
+                continue
+            # Bloquear si hizo quinta hace menos de 15 tracks
+            if CATTANEO_STATE["tracks_since_fifth"] < 15:
                 continue
         
         # ✅ INICIAR SCORING
@@ -600,11 +604,11 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
             score += base_up_score
         
         elif rel == "down":
-            # Retroceder está OK ocasionalmente, pero NO en warmup/build
-            if target_energy in ["warmup", "build"]:
-                score -= 500  # ❌ Casi bloqueante en fases tempranas
+            # BLOQUEAR bajar en mid_peak y peak_time (deben SUBIR siempre)
+            if target_energy in ["warmup", "build", "mid_peak", "peak_time"]:
+                continue  # ❌ BLOQUEADO TOTALMENTE
             else:
-                score += 80  # En closing/driving es aceptable
+                score += 80  # En closing/driving es aceptable bajar
         
         elif rel == "switch":
             switch_score = 250  # Cambiar A↔B es bueno (cambia energía)
@@ -617,11 +621,8 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
             score += switch_score
         
         elif rel == "fifth":
-            # Quintas controladas: solo si hace tiempo que no se usa
-            if CATTANEO_STATE["tracks_since_fifth"] < 10:
-                score -= 400  # Penalización fuerte si es reciente
-            else:
-                score += 100  # OK si hace mucho que no se usa
+            # Las quintas ya están bloqueadas arriba, esto solo aplica si pasó todos los filtros
+            score += 50  # Puntaje neutral
         
         # 🧠 BONUS POR NARRATIVA CORRECTA
         if target_energy == "warmup" and journey_type == "start":
@@ -1501,6 +1502,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
