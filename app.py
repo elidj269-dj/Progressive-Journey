@@ -486,7 +486,7 @@ def get_key_pair(key1, key2):
     return None
 
 def find_compatible_track(prev_track, target_energy, used_tracks_names, duration_hours=1, recent_keys=None):
-    """Encuentra el mejor track compatible con PROGRESIÓN PROFESIONAL estilo Cattaneo."""
+    """Encuentra el mejor track compatible - ESTILO HERNÁN CATTANEO."""
     global CATTANEO_STATE
     all_tracks = load_tracks()
     
@@ -525,122 +525,82 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
         
         current_key = t["key"]
         
-        # ❌ BLOQUEO 1: No permitir misma key 3 veces seguidas
+        # ❌ BLOQUEOS BÁSICOS (solo lo esencial)
+        
+        # 1. No permitir misma key 3 veces seguidas
         if rel == "same" and CATTANEO_STATE["rep_count"] >= 2:
             continue
         
-        # ❌ BLOQUEO 2: No permitir keys de los últimos 2 tracks
+        # 2. No repetir keys de los últimos 2 tracks
         if len(recent_keys) >= 2 and current_key in recent_keys[-2:]:
             continue
         
-        # ❌ BLOQUEO 3: Evitar zigzag (A→B→A→B)
-        if len(recent_keys) >= 3:
-            if (recent_keys[-1] == current_key and 
-                recent_keys[-2] == prev_key and 
-                recent_keys[-3] == current_key):
-                continue
-        
-        # ❌ BLOQUEO 4: Limitar quintas MUY ESTRICTAMENTE
+        # 3. Limitar quintas estrictamente
         if rel == "fifth":
-            # Bloquear si ya usó el máximo permitido
             if CATTANEO_STATE["fifth_count"] >= max_fifths:
                 continue
-            # Bloquear quintas en warmup y closing (demasiado agresivo)
-            if target_energy in ["warmup", "closing"]:
-                continue
-            # Bloquear si hizo quinta hace menos de 15 tracks
-            if CATTANEO_STATE["tracks_since_fifth"] < 15:
+            # Quintas solo permitidas después de 12+ tracks
+            if CATTANEO_STATE["tracks_since_fifth"] < 12:
                 continue
         
-        # ✅ INICIAR SCORING
-        score = random.uniform(30, 50)
+        # ✅ SCORING (Keys tienen MÁXIMA PRIORIDAD)
+        score = random.uniform(50, 100)
         
-        # 🧠 SCORING NARRATIVO
+        # 🎵 SCORING POR RELACIÓN CAMELOT (PRIORIDAD MÁXIMA)
+        if rel == "same":
+            if CATTANEO_STATE["rep_count"] == 0:
+                score += 300  # Primera repetición = muy bueno
+            else:
+                score += 150  # Segunda repetición = OK
+        
+        elif rel == "up":
+            # ⬆️ SUBIR +1 = LO MÁS COMÚN Y NATURAL
+            score += 500
+            
+        elif rel == "down":
+            # ⬇️ BAJAR -1 = Permitido pero menos común
+            score += 200
+        
+        elif rel == "switch":
+            # 🔄 Cambio A↔B = Muy bueno para cambiar energía
+            score += 400
+        
+        elif rel == "fifth":
+            # ±5 = Raro, solo cuando sea necesario
+            score += 100
+        
+        # 🧠 BONUS POR NARRATIVA (Secundario, no domina)
         groove_level = t.get("groove_level", 5)
         tension_curve = t.get("tension_curve", "")
         journey_type = t.get("journey_type", "")
         
-        # Bonus por progresión de groove suave
+        # Progresión suave de groove
         if prev_track:
             prev_groove = prev_track.get("groove_level", 5)
             groove_diff = groove_level - prev_groove
             
-            if 0 <= groove_diff <= 2:
-                score += 120
-            elif groove_diff > 2:
-                score -= 80
-            elif groove_diff < 0:
-                score -= 50
+            if -1 <= groove_diff <= 2:
+                score += 80  # Progresión natural
+            elif groove_diff > 3:
+                score -= 100  # Salto brusco
         
-        # 🎯 Penalización leve por keys recientes (3-5 tracks atrás)
-        if len(recent_keys) >= 5 and current_key in recent_keys[-5:-2]:
-            score -= 200
-        
-        # Validar switch pairs
-        current_pair = get_key_pair(prev_key, current_key)
-        if rel == "switch" and current_pair:
-            if CATTANEO_STATE["switch_pair"] == current_pair:
-                if CATTANEO_STATE["switch_pair_count"] >= 2:
-                    score -= 150
-        
-        # 🎵 SCORING POR RELACIÓN CAMELOT
-        if rel == "same":
-            if CATTANEO_STATE["rep_count"] == 0:
-                score += 100  # Primera repetición = bueno
-            else:
-                score += 40   # Segunda repetición = OK
-        
-        elif rel == "up":
-            base_up_score = 300  # ⬆️ MUY BUENO (progresión natural)
-            
-            # BONUS extra en warmup/build (quieren energía creciente)
-            if target_energy in ["warmup", "build"]:
-                base_up_score += 250
-            
-            # Bonus si llevamos varios switches
-            if CATTANEO_STATE["switch_pair_count"] >= 2:
-                base_up_score += 80
-            
-            score += base_up_score
-        
-        elif rel == "down":
-            # BLOQUEAR bajar en mid_peak y peak_time (deben SUBIR siempre)
-            if target_energy in ["warmup", "build", "mid_peak", "peak_time"]:
-                continue  # ❌ BLOQUEADO TOTALMENTE
-            else:
-                score += 80  # En closing/driving es aceptable bajar
-        
-        elif rel == "switch":
-            switch_score = 250  # Cambiar A↔B es bueno (cambia energía)
-            
-            # Penalizar si ya hicimos este switch recientemente
-            if current_pair and CATTANEO_STATE["switch_pair"] == current_pair:
-                if CATTANEO_STATE["switch_pair_count"] >= 1:
-                    switch_score -= 120
-            
-            score += switch_score
-        
-        elif rel == "fifth":
-            # Las quintas ya están bloqueadas arriba, esto solo aplica si pasó todos los filtros
-            score += 50  # Puntaje neutral
-        
-        # 🧠 BONUS POR NARRATIVA CORRECTA
+        # Bonus narrativo moderado
         if target_energy == "warmup" and journey_type == "start":
-            score += 180
+            score += 100
         elif target_energy == "build" and tension_curve in ["rising", "building"]:
-            score += 200
-        elif target_energy in ["mid_peak", "peak_time"] and journey_type == "climax":
-            score += 250
-        elif target_energy == "closing" and tension_curve in ["descending", "smooth_exit"]:
-            score += 180
-        
-        # 🔥 BONUS: Cambio A→B en build/mid_peak (sube energía)
-        if target_energy in ["build", "mid_peak"] and prev_mode == "A" and current_key.endswith("B"):
-            score += 220
-        
-        # 🔥 BONUS: Mantener "A" en warmup/build inicial
-        if target_energy == "warmup" and current_key.endswith("A"):
             score += 120
+        elif target_energy in ["mid_peak", "peak_time"] and journey_type == "climax":
+            score += 150
+        elif target_energy == "closing" and tension_curve in ["descending", "smooth_exit"]:
+            score += 100
+        
+        # 🔥 Bonus por cambio A→B en build/mid_peak
+        if target_energy in ["build", "mid_peak"] and prev_mode == "A" and current_key.endswith("B"):
+            score += 150
+        
+        # 🎯 Penalizar levemente keys recientes (no bloqueante)
+        if len(recent_keys) >= 5 and current_key in recent_keys[-5:-2]:
+            score -= 150
         
         scored.append((score, t))
     
@@ -650,8 +610,8 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
     # Ordenar por score descendente
     scored.sort(key=lambda x: x[0], reverse=True)
     
-    # 🔥 SELECCIÓN CON VARIEDAD: Top 15% con randomness
-    top_candidates = scored[:max(1, len(scored) // 7)]
+    # 🎲 Selección con variedad: Top 20% con randomness
+    top_candidates = scored[:max(1, len(scored) // 5)]
     ganador = random.choice(top_candidates)[1].copy()
     ganador_key = ganador["key"]
     ganador_rel = camelot_relation(prev_key, ganador_key)
@@ -1502,6 +1462,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
