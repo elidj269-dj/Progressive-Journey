@@ -486,14 +486,14 @@ def get_key_pair(key1, key2):
     return None
 
 def find_compatible_track(prev_track, target_energy, used_tracks_names, duration_hours=1, recent_keys=None):
-    """Encuentra el mejor track compatible con VARIEDAD FORZADA."""
+    """Encuentra el mejor track compatible con PROGRESIÓN PROFESIONAL estilo Cattaneo."""
     global CATTANEO_STATE
     all_tracks = load_tracks()
     
     if recent_keys is None:
         recent_keys = []
     
-    # Filtrar candidatos válidos
+    # Filtrar candidatos válidos para la fase actual
     candidates = [t for t in all_tracks if t["track"] not in used_tracks_names and is_track_valid_for_phase(t, target_energy)]
     if not candidates:
         candidates = [t for t in all_tracks if t["track"] not in used_tracks_names and is_track_valid_for_phase(t, target_energy, attempt=2)]
@@ -511,14 +511,11 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
     
     max_fifths = get_max_fifths_allowed(duration_hours)
 
+    # Resetear contador si cambió de fase
     if CATTANEO_STATE["last_phase"] != target_energy:
         CATTANEO_STATE["rep_count"] = 0
         CATTANEO_STATE["last_phase"] = target_energy
 
-    # 🔥 PENALIZACIÓN POR KEYS RECIENTES (últimas 5)
-    # 🎯 PERMITIR RETROCESOS ESTRATÉGICOS (estilo Hernán Cattaneo)
-    recent_keys_window = recent_keys[-3:] if len(recent_keys) >= 3 else recent_keys
-    
     scored = []
     
     for t in candidates:
@@ -528,138 +525,142 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
         
         current_key = t["key"]
         
-        # ❌ EVITAR LOOPS INMEDIATOS (A6→A7→A6→A7)
-        if len(recent_keys_window) >= 2:
-            if recent_keys_window[-1] == current_key and recent_keys_window[-2] == prev_key:
-                continue  # Bloquea A→B→A→B
+        # ❌ BLOQUEO 1: No permitir misma key 3 veces seguidas
+        if rel == "same" and CATTANEO_STATE["rep_count"] >= 2:
+            continue
         
-        # ✅ PERMITIR RETROCESOS si no crea loop
-        # Ejemplo válido: 5A→6A→7A→6A (vuelve pero explora)
+        # ❌ BLOQUEO 2: No permitir keys de los últimos 2 tracks
+        if len(recent_keys) >= 2 and current_key in recent_keys[-2:]:
+            continue
         
+        # ❌ BLOQUEO 3: Evitar zigzag (A→B→A→B)
+        if len(recent_keys) >= 3:
+            if (recent_keys[-1] == current_key and 
+                recent_keys[-2] == prev_key and 
+                recent_keys[-3] == current_key):
+                continue
+        
+        # ❌ BLOQUEO 4: Limitar quintas según duración
+        if rel == "fifth":
+            if CATTANEO_STATE["fifth_count"] >= max_fifths:
+                continue
+            # En warmup/closing, evitar quintas (demasiado agresivo)
+            if target_energy in ["warmup", "closing"]:
+                continue
+        
+        # ✅ INICIAR SCORING
+        score = random.uniform(30, 50)
+        
+        # 🧠 SCORING NARRATIVO
+        groove_level = t.get("groove_level", 5)
+        tension_curve = t.get("tension_curve", "")
+        journey_type = t.get("journey_type", "")
+        
+        # Bonus por progresión de groove suave
+        if prev_track:
+            prev_groove = prev_track.get("groove_level", 5)
+            groove_diff = groove_level - prev_groove
+            
+            if 0 <= groove_diff <= 2:
+                score += 120
+            elif groove_diff > 2:
+                score -= 80
+            elif groove_diff < 0:
+                score -= 50
+        
+        # 🎯 Penalización leve por keys recientes (3-5 tracks atrás)
+        if len(recent_keys) >= 5 and current_key in recent_keys[-5:-2]:
+            score -= 200
+        
+        # Validar switch pairs
         current_pair = get_key_pair(prev_key, current_key)
         if rel == "switch" and current_pair:
             if CATTANEO_STATE["switch_pair"] == current_pair:
                 if CATTANEO_STATE["switch_pair_count"] >= 2:
-                    continue
+                    score -= 150
         
-        score = random.uniform(20, 40)
-
-# 🧠 SCORING NARRATIVO
-groove_level = t.get("groove_level", 5)
-tension_curve = t.get("tension_curve", "")
-journey_type = t.get("journey_type", "")
-
-# Bonus por progresión de groove
-if prev_track:
-    prev_groove = prev_track.get("groove_level", 5)
-    groove_diff = groove_level - prev_groove
+        # 🎵 SCORING POR RELACIÓN CAMELOT
+        if rel == "same":
+            if CATTANEO_STATE["rep_count"] == 0:
+                score += 100  # Primera repetición = bueno
+            else:
+                score += 40   # Segunda repetición = OK
+        
+        elif rel == "up":
+            base_up_score = 300  # ⬆️ MUY BUENO (progresión natural)
+            
+            # BONUS extra en warmup/build (quieren energía creciente)
+            if target_energy in ["warmup", "build"]:
+                base_up_score += 250
+            
+            # Bonus si llevamos varios switches
+            if CATTANEO_STATE["switch_pair_count"] >= 2:
+                base_up_score += 80
+            
+            score += base_up_score
+        
+        elif rel == "down":
+            # Retroceder está OK ocasionalmente, pero NO en warmup/build
+            if target_energy in ["warmup", "build"]:
+                score -= 500  # ❌ Casi bloqueante en fases tempranas
+            else:
+                score += 80  # En closing/driving es aceptable
+        
+        elif rel == "switch":
+            switch_score = 250  # Cambiar A↔B es bueno (cambia energía)
+            
+            # Penalizar si ya hicimos este switch recientemente
+            if current_pair and CATTANEO_STATE["switch_pair"] == current_pair:
+                if CATTANEO_STATE["switch_pair_count"] >= 1:
+                    switch_score -= 120
+            
+            score += switch_score
+        
+        elif rel == "fifth":
+            # Quintas controladas: solo si hace tiempo que no se usa
+            if CATTANEO_STATE["tracks_since_fifth"] < 10:
+                score -= 400  # Penalización fuerte si es reciente
+            else:
+                score += 100  # OK si hace mucho que no se usa
+        
+        # 🧠 BONUS POR NARRATIVA CORRECTA
+        if target_energy == "warmup" and journey_type == "start":
+            score += 180
+        elif target_energy == "build" and tension_curve in ["rising", "building"]:
+            score += 200
+        elif target_energy in ["mid_peak", "peak_time"] and journey_type == "climax":
+            score += 250
+        elif target_energy == "closing" and tension_curve in ["descending", "smooth_exit"]:
+            score += 180
+        
+        # 🔥 BONUS: Cambio A→B en build/mid_peak (sube energía)
+        if target_energy in ["build", "mid_peak"] and prev_mode == "A" and current_key.endswith("B"):
+            score += 220
+        
+        # 🔥 BONUS: Mantener "A" en warmup/build inicial
+        if target_energy == "warmup" and current_key.endswith("A"):
+            score += 120
+        
+        scored.append((score, t))
     
-    if 0 <= groove_diff <= 2:
-        score += 100
-    elif groove_diff > 2:
-        score -= 50
-
-# ❌ BLOQUEO 1: No permitir keys de los últimos 2 tracks (BLOQUEANTE)
-if len(recent_keys) >= 2 and current_key in recent_keys[-2:]:
-    continue  # 🔒 BLOQUEADO TOTALMENTE
-
-# 🎯 PENALIZACIÓN MODERADA: Keys de hace 3-5 tracks
-if len(recent_keys) >= 5 and current_key in recent_keys[-5:-2]:
-    score -= 300
-
-# ❌ BLOQUEO 2: Evitar zigzag (A→B→A→B)
-if len(recent_keys) >= 3:
-    if (recent_keys[-1] == current_key and 
-        recent_keys[-2] == prev_key and 
-        recent_keys[-3] == current_key):
-        continue  # 🔒 BLOQUEADO: No permite A→B→A→B
-
-# 🎵 SCORING POR RELACIÓN CAMELOT
-if rel == "same":
-    # ❌ BLOQUEO 3: No permitir 3 tracks seguidos en misma key
-    if CATTANEO_STATE["rep_count"] >= 2:
-        continue  # 🔒 BLOQUEADO TOTALMENTE
-    elif CATTANEO_STATE["rep_count"] == 1:
-        score += 20  # Segunda vez = OK
-    else:
-        score += 80  # Primera vez = Muy bueno
-
-elif rel == "up":
-    base_up_score = 250  # ⬆️ Aumentado de 200
-    
-    # 🔥 BONUS EXTRA para warmup/build (quieren subir energía)
-    if target_energy in ["warmup", "build"]:
-        base_up_score += 200  # ⬆️ Aumentado de 150
-    
-    # Bonus si ya hizo varios switches
-    if CATTANEO_STATE["switch_pair_count"] >= 2:
-        base_up_score += 120
-    
-    score += base_up_score
-
-elif rel == "down":
-    # 🔥 PENALIZAR FUERTE bajar en warmup/build
-    if target_energy in ["warmup", "build"]:
-        score -= 400  # ⬇️ Aumentado de -100 (casi bloqueante)
-    else:
-        score += 100  # En closing/driving está OK bajar
-
-elif rel == "switch":
-    switch_score = 220  # ⬆️ Aumentado de 180
-    
-    # Penalizar si ya hizo este switch recientemente
-    if current_pair and CATTANEO_STATE["switch_pair"] == current_pair:
-        if CATTANEO_STATE["switch_pair_count"] >= 1:
-            switch_score -= 100
-    
-    score += switch_score
-
-elif rel == "fifth":
-    # ❌ BLOQUEO 4: No permitir más quintas del máximo
-    if CATTANEO_STATE["fifth_count"] >= max_fifths:
-        continue  # 🔒 BLOQUEADO TOTALMENTE
-    
-    # Penalizar FUERTE si hizo quinta recientemente (< 8 tracks)
-    if CATTANEO_STATE["tracks_since_fifth"] < 8:
-        score -= 600  # ⬇️ Aumentado de -300 (casi bloqueante)
-    else:
-        score += 80  # OK si hace tiempo que no usa
-
-# 🧠 BONUS POR NARRATIVA CORRECTA
-if target_energy == "warmup" and journey_type == "start":
-    score += 150  # ⬆️ Aumentado de 120
-elif target_energy == "build" and tension_curve in ["rising", "building"]:
-    score += 180  # ⬆️ Aumentado de 150
-elif target_energy in ["mid_peak", "peak_time"] and journey_type == "climax":
-    score += 220  # ⬆️ Aumentado de 180
-elif target_energy == "closing" and tension_curve in ["descending", "smooth_exit"]:
-    score += 170  # ⬆️ Aumentado de 140
-
-# 🔥 BONUS: Cambio A→B en build/mid_peak (aumenta energía)
-if target_energy in ["build", "mid_peak"] and prev_mode == "A" and current_key.endswith("B"):
-    score += 200  # ⬆️ Aumentado de 150
-
-# 🔥 BONUS: Mantener "A" en warmup/build (tonos bajos)
-if target_energy in ["warmup", "build"] and current_key.endswith("A"):
-    score += 100  # ⬆️ Aumentado de 80
-
-scored.append((score, t))
-
     if not scored:
         return None
     
+    # Ordenar por score descendente
     scored.sort(key=lambda x: x[0], reverse=True)
     
-    # 🔥 SELECCIÓN CON VARIEDAD: Top 10% con algo de randomness
-    top_candidates = scored[:max(1, len(scored) // 10)]
+    # 🔥 SELECCIÓN CON VARIEDAD: Top 15% con randomness
+    top_candidates = scored[:max(1, len(scored) // 7)]
     ganador = random.choice(top_candidates)[1].copy()
     ganador_key = ganador["key"]
     ganador_rel = camelot_relation(prev_key, ganador_key)
-
+    
+    # Actualizar estado global
     CATTANEO_STATE["last_two_keys"].append(ganador_key)
     if len(CATTANEO_STATE["last_two_keys"]) > 2:
         CATTANEO_STATE["last_two_keys"].pop(0)
     
+    # Actualizar switch pair tracking
     ganador_pair = get_key_pair(prev_key, ganador_key)
     if ganador_rel == "switch" and ganador_pair:
         if CATTANEO_STATE["switch_pair"] == ganador_pair:
@@ -671,17 +672,19 @@ scored.append((score, t))
         CATTANEO_STATE["switch_pair"] = None
         CATTANEO_STATE["switch_pair_count"] = 0
     
+    # Actualizar contador de quintas
     if ganador_rel == "fifth":
         CATTANEO_STATE["tracks_since_fifth"] = 0
         CATTANEO_STATE["fifth_count"] += 1
     else:
         CATTANEO_STATE["tracks_since_fifth"] += 1
-
+    
+    # Actualizar contador de repeticiones
     if ganador_key == prev_key:
         CATTANEO_STATE["rep_count"] += 1
     else:
         CATTANEO_STATE["rep_count"] = 0
-
+    
     ganador["stage"] = target_energy
     return ganador
 
@@ -1498,6 +1501,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
