@@ -559,23 +559,22 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
             elif groove_diff > 2:
                 score -= 50
 
-         # 🎯 PENALIZACIÓN MODERADA por keys muy recientes (últimas 2)
+        # 🔥 PENALIZACIÓN FUERTE por keys recientes
         if len(recent_keys) >= 2 and current_key in recent_keys[-2:]:
-            score -= 150  # Penaliza pero NO bloquea
+            score -= 500  # ❌ BLOQUEANTE
         
-        # ✅ PERMITIR volver a keys anteriores (ej: 5A→6A→5A→5B)
-        # Solo penaliza levemente si fue hace 1-2 tracks
-        if len(recent_keys) >= 3 and current_key == recent_keys[-3]:
-            score += 50  # BONUS por retroceso estratégico
+        # 🎯 PENALIZACIÓN MODERADA por keys de hace 3-5 tracks
+        if len(recent_keys) >= 5 and current_key in recent_keys[-5:-2]:
+            score -= 200
 
         fifth_penalty = 0
         if rel == "fifth":
             if CATTANEO_STATE["fifth_count"] >= max_fifths:
-                continue
+                continue  # Bloquea si ya usó todas las quintas permitidas
             if CATTANEO_STATE["tracks_since_fifth"] < 10:
-                fifth_penalty = -300
+                fifth_penalty = -300  # Penaliza si hizo quinta muy reciente
             else:
-                fifth_penalty = 100
+                fifth_penalty = 100  # Permite si hace tiempo que no usa
 
         if rel == "same":
             if CATTANEO_STATE["rep_count"] < 1:
@@ -586,18 +585,28 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
                 score -= 300
         elif rel == "up":
             base_up_score = 200
+            # 🔥 BONUS EXTRA para warmup/build (quieren subir)
+            if target_energy in ["warmup", "build"]:
+                base_up_score += 150
             if CATTANEO_STATE["switch_pair_count"] >= 2:
                 base_up_score += 100
             score += base_up_score
         elif rel == "down":
-            score += 120
+            # 🔥 PENALIZAR bajar en warmup/build
+            if target_energy in ["warmup", "build"]:
+                score -= 100
+            else:
+                score += 120
         elif rel == "switch":
             switch_score = 180
             if current_pair and CATTANEO_STATE["switch_pair"] == current_pair:
                 if CATTANEO_STATE["switch_pair_count"] >= 1:
                     switch_score -= 80
             score += switch_score
-            # 🧠 BONUS POR NARRATIVA CORRECTA
+        elif rel == "fifth":
+            score += fifth_penalty
+
+        # 🧠 BONUS POR NARRATIVA CORRECTA
         if target_energy == "warmup" and journey_type == "start":
             score += 120
         elif target_energy == "build" and tension_curve in ["rising", "building"]:
@@ -606,8 +615,6 @@ def find_compatible_track(prev_track, target_energy, used_tracks_names, duration
             score += 180
         elif target_energy == "closing" and tension_curve in ["descending", "smooth_exit"]:
             score += 140
-        elif rel == "fifth":
-            score += fifth_penalty
 
         if target_energy in ["build", "mid_peak"] and prev_mode == "A" and current_key.endswith("B"):
             score += 150
@@ -1470,6 +1477,7 @@ if __name__ == "__main__":
         db.create_all() 
 
     app.run(debug=True, port=5000)
+
 
 
 
